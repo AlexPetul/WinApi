@@ -2,7 +2,6 @@
 #include <tchar.h>
 #include <cmath>
 #include <cstdlib>
-#include <type_traits>
 #define M_PI           3.14159265358979323846
 LRESULT CALLBACK  WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 TCHAR WinName[] = "MainFrame";
@@ -24,7 +23,7 @@ public:
 		wc.lpszMenuName = NULL;
 		wc.cbClsExtra = 0;
 		wc.cbWndExtra = 0;
-		wc.hbrBackground = (HBRUSH)(CTLCOLOR_MAX);
+		wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
 
 		if (!RegisterClass(&wc))
 		{
@@ -59,16 +58,48 @@ public:
 
 	void createRect(HWND hwnd) {
 		PAINTSTRUCT ps;
-		HDC hdc;
+		HDC hdc = BeginPaint(hwnd, &ps);
 
-		hdc = BeginPaint(hwnd, &ps);
-		HBRUSH br, obr;
-		br = CreateSolidBrush(RGB(255, 0, 0));
-		obr = (HBRUSH)SelectObject(hdc, br);
-		Ellipse(hdc, x - R, y - R, x + R, y + R);
-		SelectObject(hdc, obr);
-		DeleteObject(br);
-		EndPaint(hwnd, &ps);
+		HBITMAP hBitmap;
+		hBitmap = (HBITMAP)::LoadImage(NULL, "nike_logo.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+		// Verify that the image was loaded
+		if (hBitmap == NULL) {
+			::MessageBox(NULL, __T("LoadImage Failed"), __T("Error"), MB_OK);
+		}
+
+		// Create a device context that is compatible with the window
+		HDC hLocalDC;
+		hLocalDC = ::CreateCompatibleDC(hdc);
+		// Verify that the device context was created
+		if (hLocalDC == NULL) {
+			::MessageBox(NULL, __T("CreateCompatibleDC Failed"), __T("Error"), MB_OK);
+		}
+
+		// Get the bitmap's parameters and verify the get
+		BITMAP qBitmap;
+		int iReturn = GetObject(reinterpret_cast<HGDIOBJ>(hBitmap), sizeof(BITMAP),
+			reinterpret_cast<LPVOID>(&qBitmap));
+		if (!iReturn) {
+			::MessageBox(NULL, __T("GetObject Failed"), __T("Error"), MB_OK);
+		}
+
+		// Select the loaded bitmap into the device context
+		HBITMAP hOldBmp = (HBITMAP)::SelectObject(hLocalDC, hBitmap);
+		if (hOldBmp == NULL) {
+			::MessageBox(NULL, __T("SelectObject Failed"), __T("Error"), MB_OK);
+		}
+
+		// Blit the dc which holds the bitmap onto the window's dc
+		BOOL qRetBlit = ::BitBlt(hdc, x, y, qBitmap.bmWidth, qBitmap.bmHeight,
+			hLocalDC, 0, 0, SRCCOPY);
+		if (!qRetBlit) {
+			::MessageBox(NULL, __T("Blit Failed"), __T("Error"), MB_OK);
+		}
+
+		// Unitialize and deallocate resources
+		::SelectObject(hLocalDC, hOldBmp);
+		::DeleteDC(hLocalDC);
+		::DeleteObject(hBitmap);
 	}
 };
 
@@ -169,7 +200,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
 		GetClientRect(hwnd, &rt);
 		int w = rt.right;
 		int h = rt.bottom;
-		if (x >= w - R)vx = -abs(vx); //
+		if (x >= w - R)vx = -abs(vx);
 		if (y > h - R)vy = -abs(vy);
 		if (x < R)vx = abs(vx); 
 		if (y < R)vy = abs(vy); 
