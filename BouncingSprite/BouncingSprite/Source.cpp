@@ -1,14 +1,16 @@
 ﻿#include <Windows.h>
 #include <cmath>
 #include <cstdlib>
-#define M_PI           3.14159265358979323846
+#define M_PI 3.14159265358979323846
+#define BMP_WIDTH 220
+#define BMP_HEIGHT 80
+#define DEF_SPEED 6.00
 
 LRESULT CALLBACK  WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
 class Window {
 private:
 	HWND _hwnd;
-	HWND _buttonStop;
 	MSG _msg;
 	WNDCLASS _wc;
 public:
@@ -36,11 +38,6 @@ public:
 			200, 300, 400, 300, HWND_DESKTOP, NULL, hInstance, NULL);
 	}
 
-	void create_button(HINSTANCE hInstance) {
-		_buttonStop = CreateWindow("Button", "*", WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,
-			0, 0, 20, 20, _hwnd, (HMENU)666, hInstance, NULL);
-	}
-
 	void show_window() {
 		ShowWindow(_hwnd, SW_SHOW);
 		UpdateWindow(_hwnd);
@@ -51,7 +48,6 @@ public:
 class LogoBmp {
 private:
 	double _xSpeed, _ySpeed;
-	double _xPrevSpeed, _yPrevSpeed;
 	double _law;
 	int _xCoord, _yCoord;
 public:
@@ -66,41 +62,19 @@ public:
 
 	double GetLaw() { return _law; }
 
-	void SetLaw(double law) {
-		_law = law;
-	}
+	void SetLaw(double law) { _law = law; }
 
-	void SaveCurrSpeed() {
-		_xPrevSpeed = _xSpeed;
-		_yPrevSpeed = _ySpeed;
-	}
+	double GetXSpeed() { return _xSpeed; }
 
-	double* GetPrevSpeed() {
-		double state[2] = { _xPrevSpeed, _yPrevSpeed };
-		return state;
-	}
+	void SetXSpeed(double xSpeed) { this->_xSpeed = xSpeed; }
 
-	double GetXSpeed() {
-		return _xSpeed;
-	}
+	double GetYSpeed() { return _ySpeed; }
 
-	void SetXSpeed(double xSpeed) {
-		this->_xSpeed = xSpeed;
-	}
+	void SetYSpeed(double ySpeed) { this->_ySpeed = ySpeed; }
 
-	double GetYSpeed() {
-		return _ySpeed;
-	}
-
-	void SetYSpeed(double ySpeed) {
-		this->_ySpeed = ySpeed;
-	}
-
-	void createRect(HWND hwnd) {
+	void createRect(HWND hwnd, HBITMAP hBitmap) {
 		PAINTSTRUCT ps;
 		HDC hdc = BeginPaint(hwnd, &ps);
-		HBITMAP hBitmap;
-		hBitmap = (HBITMAP)LoadImage(NULL, "nike_logo.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
 		HDC hLocalDC;
 		hLocalDC = CreateCompatibleDC(hdc);
 		BITMAP qBitmap;
@@ -123,7 +97,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 
 	myWin.reg_window(hInstance, L"MyWindowClass", WndProc);
 	myWin.create_window(hInstance);
-	myWin.create_button(hInstance);
 	myWin.show_window();
 
 	while (GetMessage(&msg, NULL, 0, 0))
@@ -138,18 +111,18 @@ LogoBmp logo;
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) {
 	int wheelDir = 0;
+	RECT rt;
+	HBITMAP hBitmap = (HBITMAP)LoadImage(NULL, "nike_logo.bmp", IMAGE_BITMAP, BMP_WIDTH, BMP_HEIGHT, LR_LOADFROMFILE);
 	switch (message) {
 	case WM_COMMAND:
 		if (LOWORD(wParam) == 666) {
-			if ((logo.GetXSpeed() != 0) && (logo.GetYSpeed() != 0)) {
-				logo.SaveCurrSpeed();
+			if ((logo.GetXSpeed() != 0) || (logo.GetYSpeed() != 0)) {
 				logo.SetXSpeed(0);
 				logo.SetYSpeed(0);
 			}
 			else {
-				double* state = logo.GetPrevSpeed();
-				logo.SetXSpeed(state[0]);
-				logo.SetYSpeed(state[1]);
+				logo.SetXSpeed(DEF_SPEED * cos(logo.GetLaw()));
+				logo.SetYSpeed(DEF_SPEED * sin(logo.GetLaw()));
 			}
 		}
 		break;
@@ -158,50 +131,97 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
 		wheelDir = (SHORT)HIWORD(wParam);
 		if (wheelDir > 0) {
 			if (GetKeyState(VK_SHIFT) < 0) {
-				logo.SetXSpeed(6.0);
+				logo.SetXSpeed(DEF_SPEED);
 				logo.SetYSpeed(0);
 			}
 			else {
-				logo.SetYSpeed(6.0);
+				logo.SetYSpeed(DEF_SPEED);
 			}
 		}
 		else {
 			if (GetKeyState(VK_SHIFT) < 0) {
-				logo.SetXSpeed(-6.0);
+				logo.SetXSpeed(-DEF_SPEED);
 				logo.SetYSpeed(0);
 			}
 			else {
-				logo.SetYSpeed(-6.0);
+				logo.SetYSpeed(-DEF_SPEED);
 			}
+		}
+		break;
+	case WM_KEYDOWN:
+		if (wParam == VK_UP) {
+			if (logo.GetYCoord() <= 0) {
+				logo.SetYSpeed(0);
+			}
+			else {
+				logo.SetXSpeed(0);
+				logo.SetYSpeed(-DEF_SPEED);
+			}
+		}
+		else if (wParam == VK_DOWN) {
+			GetClientRect(hwnd, &rt);
+			if (logo.GetYCoord() >= rt.bottom - BMP_HEIGHT) {
+				logo.SetYSpeed(0);
+			}
+			else {
+				logo.SetXSpeed(0);
+				logo.SetYSpeed(DEF_SPEED);
+			}
+		}
+		else if (wParam == VK_LEFT) {
+			if (logo.GetXCoord() <= 0) {
+				logo.SetXSpeed(0);
+			}
+			else {
+				logo.SetYSpeed(0);
+				logo.SetXSpeed(-DEF_SPEED);
+			}
+		}
+		else if (wParam == VK_RIGHT) {
+			GetClientRect(hwnd, &rt);
+			if (logo.GetXCoord() >= rt.right - BMP_WIDTH) {
+				logo.SetXSpeed(0);
+			}
+			else {
+				logo.SetYSpeed(0);
+				logo.SetXSpeed(DEF_SPEED);
+			}
+		}
+		break;
+	case WM_KEYUP:
+		if (wParam == VK_UP || wParam == VK_DOWN) {
+			logo.SetYSpeed(0);
+		}
+		else if (wParam == VK_LEFT || wParam == VK_RIGHT) {
+			logo.SetXSpeed(0);
 		}
 		break;
 	case WM_ACTIVATE:
 		logo.SetXCoord(LOWORD(lParam));
 		logo.SetYCoord(HIWORD(lParam));
 		logo.SetLaw((rand() % 360 - 180) * M_PI / 180.0);
-		logo.SetXSpeed(10.0 * cos(logo.GetLaw()));
-		logo.SetYSpeed(10.0 * sin(logo.GetLaw()));
+		logo.SetXSpeed(DEF_SPEED * cos(logo.GetLaw()));
+		logo.SetYSpeed(DEF_SPEED * sin(logo.GetLaw()));
 		SetTimer(hwnd, 1, 20, NULL);
 		break;
 	case WM_TIMER:
 	{
-		InvalidateRgn(hwnd, NULL, true);
+		InvalidateRgn(hwnd, NULL, false);
 		logo.SetXCoord(logo.GetXCoord() + logo.GetXSpeed()); 
 		logo.SetYCoord(logo.GetYCoord() + logo.GetYSpeed()); 
-		RECT rt;
 		GetClientRect(hwnd, &rt);
-		int w = rt.right;
-		int h = rt.bottom;
-		if (logo.GetXCoord() >= w - 20) {
+		int width = rt.right;
+		int height = rt.bottom;
+		if (logo.GetXCoord() >= width - BMP_WIDTH) {
 			logo.SetXSpeed(-abs(logo.GetXSpeed()));
 		}
-		if (logo.GetYCoord() > h - 20) {
+		if (logo.GetYCoord() > height - BMP_HEIGHT) {
 			logo.SetYSpeed(-abs(logo.GetYSpeed()));
 		}
-		if (logo.GetXCoord() < 20) {
+		if (logo.GetXCoord() <= 0) {
 			logo.SetXSpeed(abs(logo.GetXSpeed()));
 		}
-		if (logo.GetYCoord() < 20) {
+		if (logo.GetYCoord() <= 0) {
 			logo.SetYSpeed(abs(logo.GetYSpeed()));
 		}
 		InvalidateRgn(hwnd, NULL, false);
@@ -209,7 +229,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
 	break;
 	case WM_PAINT:
 	{
-		logo.createRect(hwnd);
+		logo.createRect(hwnd, hBitmap);
 	}
 	break;
 	case WM_DESTROY:
