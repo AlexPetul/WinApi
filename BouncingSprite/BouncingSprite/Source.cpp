@@ -1,105 +1,117 @@
 ﻿#include <Windows.h>
-#include <tchar.h>
 #include <cmath>
 #include <cstdlib>
 #define M_PI           3.14159265358979323846
+
 LRESULT CALLBACK  WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
-TCHAR WinName[] = "MainFrame";
 
 class Window {
+private:
+	HWND _hwnd;
+	HWND _buttonStop;
+	MSG _msg;
+	WNDCLASS _wc;
 public:
-	HWND hwnd;
-	HWND buttonStop;
-	MSG msg;
-	WNDCLASS wc;
 
 	bool reg_window(HINSTANCE hInstance, LPCWSTR lpzClassName, WNDPROC lpfnWndProc) {
-		wc.hInstance = hInstance;
-		wc.lpszClassName = WinName;
-		wc.lpfnWndProc = WndProc;
-		wc.style = CS_HREDRAW | CS_VREDRAW;
-		wc.hIcon = LoadIcon(NULL, IDI_APPLICATION);
-		wc.hCursor = LoadCursor(NULL, IDC_ARROW);
-		wc.lpszMenuName = NULL;
-		wc.cbClsExtra = 0;
-		wc.cbWndExtra = 0;
-		wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+		_wc.hInstance = hInstance;
+		_wc.lpszClassName = "MainFrame";
+		_wc.lpfnWndProc = WndProc;
+		_wc.style = CS_HREDRAW | CS_VREDRAW;
+		_wc.hIcon = LoadIcon(NULL, IDI_APPLICATION);
+		_wc.hCursor = LoadCursor(NULL, IDC_ARROW);
+		_wc.lpszMenuName = NULL;
+		_wc.cbClsExtra = 0;
+		_wc.cbWndExtra = 0;
+		_wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
 
-		if (!RegisterClass(&wc))
+		if (!RegisterClass(&_wc))
 		{
 			return 0;
 		}
 	}
 
 	void create_window(HINSTANCE hInstance) {
-		hwnd = CreateWindow(WinName, "LAB 1", WS_OVERLAPPEDWINDOW,
+		_hwnd = CreateWindow("MainFrame", "LAB 1", WS_OVERLAPPEDWINDOW,
 			200, 300, 400, 300, HWND_DESKTOP, NULL, hInstance, NULL);
 	}
 
 	void create_button(HINSTANCE hInstance) {
-		buttonStop = CreateWindow("Button", "*", WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,
-			0, 0, 20, 20, hwnd, (HMENU)666, hInstance, NULL);
+		_buttonStop = CreateWindow("Button", "*", WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,
+			0, 0, 20, 20, _hwnd, (HMENU)666, hInstance, NULL);
 	}
 
 	void show_window() {
-		ShowWindow(hwnd, SW_SHOW);
-		UpdateWindow(hwnd);
+		ShowWindow(_hwnd, SW_SHOW);
+		UpdateWindow(_hwnd);
 	}
 
 };
 
-class Rect {
+class LogoBmp {
+private:
+	double _xSpeed, _ySpeed;
+	double _xPrevSpeed, _yPrevSpeed;
+	double _law;
+	int _xCoord, _yCoord;
 public:
-	RECT rc;
-	int x = 100, y = 100;
-	int R;
-	double vx, vy;
-	double t;
+
+	void SetXCoord(int x) { _xCoord = x; }
+
+	int GetXCoord() { return _xCoord; }
+
+	void SetYCoord(int y) { _yCoord = y; }
+
+	int GetYCoord() { return _yCoord; }
+
+	double GetLaw() { return _law; }
+
+	void SetLaw(double law) {
+		_law = law;
+	}
+
+	void SaveCurrSpeed() {
+		_xPrevSpeed = _xSpeed;
+		_yPrevSpeed = _ySpeed;
+	}
+
+	double* GetPrevSpeed() {
+		double state[2] = { _xPrevSpeed, _yPrevSpeed };
+		return state;
+	}
+
+	double GetXSpeed() {
+		return _xSpeed;
+	}
+
+	void SetXSpeed(double xSpeed) {
+		this->_xSpeed = xSpeed;
+	}
+
+	double GetYSpeed() {
+		return _ySpeed;
+	}
+
+	void SetYSpeed(double ySpeed) {
+		this->_ySpeed = ySpeed;
+	}
 
 	void createRect(HWND hwnd) {
 		PAINTSTRUCT ps;
 		HDC hdc = BeginPaint(hwnd, &ps);
-
 		HBITMAP hBitmap;
-		hBitmap = (HBITMAP)::LoadImage(NULL, "nike_logo.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
-		// Verify that the image was loaded
-		if (hBitmap == NULL) {
-			::MessageBox(NULL, __T("LoadImage Failed"), __T("Error"), MB_OK);
-		}
-
-		// Create a device context that is compatible with the window
+		hBitmap = (HBITMAP)LoadImage(NULL, "nike_logo.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
 		HDC hLocalDC;
-		hLocalDC = ::CreateCompatibleDC(hdc);
-		// Verify that the device context was created
-		if (hLocalDC == NULL) {
-			::MessageBox(NULL, __T("CreateCompatibleDC Failed"), __T("Error"), MB_OK);
-		}
-
-		// Get the bitmap's parameters and verify the get
+		hLocalDC = CreateCompatibleDC(hdc);
 		BITMAP qBitmap;
 		int iReturn = GetObject(reinterpret_cast<HGDIOBJ>(hBitmap), sizeof(BITMAP),
 			reinterpret_cast<LPVOID>(&qBitmap));
-		if (!iReturn) {
-			::MessageBox(NULL, __T("GetObject Failed"), __T("Error"), MB_OK);
-		}
-
-		// Select the loaded bitmap into the device context
-		HBITMAP hOldBmp = (HBITMAP)::SelectObject(hLocalDC, hBitmap);
-		if (hOldBmp == NULL) {
-			::MessageBox(NULL, __T("SelectObject Failed"), __T("Error"), MB_OK);
-		}
-
-		// Blit the dc which holds the bitmap onto the window's dc
-		BOOL qRetBlit = ::BitBlt(hdc, x, y, qBitmap.bmWidth, qBitmap.bmHeight,
+		HBITMAP hOldBmp = (HBITMAP)SelectObject(hLocalDC, hBitmap);
+		BOOL qRetBlit = BitBlt(hdc, _xCoord, _yCoord, qBitmap.bmWidth, qBitmap.bmHeight,
 			hLocalDC, 0, 0, SRCCOPY);
-		if (!qRetBlit) {
-			::MessageBox(NULL, __T("Blit Failed"), __T("Error"), MB_OK);
-		}
-
-		// Unitialize and deallocate resources
-		::SelectObject(hLocalDC, hOldBmp);
-		::DeleteDC(hLocalDC);
-		::DeleteObject(hBitmap);
+		SelectObject(hLocalDC, hOldBmp);
+		DeleteDC(hLocalDC);
+		DeleteObject(hBitmap);
 	}
 };
 
@@ -122,103 +134,84 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 	return 0;
 }
 
-Rect r;
-RECT& rc = r.rc;
-int& x = r.x;
-int& y = r.y; 
-int& R = r.R; 
-double& vx = r.vx;
-double& vy = r.vy;
-double& t = r.t;
-double prevVx;
-double prevVy;
-int wheelDir;
-
-void SaveState(double vx, double vy) {
-	prevVx = vx;
-	prevVy = vy;
-}
-
-double* GetPrevState() {
-	double state[2] = { prevVx, prevVy };
-	return state;
-}
+LogoBmp logo;
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) {
+	int wheelDir = 0;
 	switch (message) {
 	case WM_COMMAND:
 		if (LOWORD(wParam) == 666) {
-			if ((vx != 0) && (vy != 0)) {
-				SaveState(vx, vy);
-				vx = 0;
-				vy = 0;
+			if ((logo.GetXSpeed() != 0) && (logo.GetYSpeed() != 0)) {
+				logo.SaveCurrSpeed();
+				logo.SetXSpeed(0);
+				logo.SetYSpeed(0);
 			}
 			else {
-				double* state = GetPrevState();
-				vx = state[0];
-				vy = state[1];
+				double* state = logo.GetPrevSpeed();
+				logo.SetXSpeed(state[0]);
+				logo.SetYSpeed(state[1]);
 			}
 		}
 		break;
 	case WM_MOUSEWHEEL:
-		vx = 0;
+		logo.SetXSpeed(0);
 		wheelDir = (SHORT)HIWORD(wParam);
 		if (wheelDir > 0) {
 			if (GetKeyState(VK_SHIFT) < 0) {
-				vx = 6.0;
-				vy = 0;
+				logo.SetXSpeed(6.0);
+				logo.SetYSpeed(0);
 			}
 			else {
-				vy = 6.0;
+				logo.SetYSpeed(6.0);
 			}
 		}
 		else {
 			if (GetKeyState(VK_SHIFT) < 0) {
-				vx = -6.0;
-				vy = 0;
+				logo.SetXSpeed(-6.0);
+				logo.SetYSpeed(0);
 			}
 			else {
-				vy = -6.0;
+				logo.SetYSpeed(-6.0);
 			}
 		}
 		break;
 	case WM_ACTIVATE:
-		x = LOWORD(lParam);
-		y = HIWORD(lParam);
-		R = 15; 
-		t = (rand() % 360 - 180) * M_PI / 180.0;
-		vx = 10.0 * cos(t);
-		vy = 10.0 * sin(t);
+		logo.SetXCoord(LOWORD(lParam));
+		logo.SetYCoord(HIWORD(lParam));
+		logo.SetLaw((rand() % 360 - 180) * M_PI / 180.0);
+		logo.SetXSpeed(10.0 * cos(logo.GetLaw()));
+		logo.SetYSpeed(10.0 * sin(logo.GetLaw()));
 		SetTimer(hwnd, 1, 20, NULL);
 		break;
-
 	case WM_TIMER:
 	{
 		InvalidateRgn(hwnd, NULL, true);
-		x += vx; y += vy; 
+		logo.SetXCoord(logo.GetXCoord() + logo.GetXSpeed()); 
+		logo.SetYCoord(logo.GetYCoord() + logo.GetYSpeed()); 
 		RECT rt;
 		GetClientRect(hwnd, &rt);
 		int w = rt.right;
 		int h = rt.bottom;
-		if (x >= w - R)vx = -abs(vx);
-		if (y > h - R)vy = -abs(vy);
-		if (x < R)vx = abs(vx); 
-		if (y < R)vy = abs(vy); 
-
-		rc.left = x - R - 1;
-		rc.top = y - R - 1;
-		rc.right = x + R + 1;
-		rc.bottom = y + R + 1;
+		if (logo.GetXCoord() >= w - 20) {
+			logo.SetXSpeed(-abs(logo.GetXSpeed()));
+		}
+		if (logo.GetYCoord() > h - 20) {
+			logo.SetYSpeed(-abs(logo.GetYSpeed()));
+		}
+		if (logo.GetXCoord() < 20) {
+			logo.SetXSpeed(abs(logo.GetXSpeed()));
+		}
+		if (logo.GetYCoord() < 20) {
+			logo.SetYSpeed(abs(logo.GetYSpeed()));
+		}
 		InvalidateRgn(hwnd, NULL, false);
 	}
 	break;
-
 	case WM_PAINT:
 	{
-		r.createRect(hwnd);
+		logo.createRect(hwnd);
 	}
 	break;
-
 	case WM_DESTROY:
 		KillTimer(hwnd, 1);
 		PostQuitMessage(0);
