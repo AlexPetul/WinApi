@@ -131,6 +131,9 @@
   <ItemGroup>
     <ResourceCompile Include="BouncingSprite.rc" />
   </ItemGroup>
+  <ItemGroup>
+    <Image Include="nike_logo.bmp" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

@@ -50,7 +50,12 @@ private:
 	double _xSpeed, _ySpeed;
 	double _law;
 	int _xCoord, _yCoord;
+	BOOL isDragging = FALSE;
 public:
+
+	BOOL GetDrag() { return isDragging; }
+
+	void SetDrag(BOOL flag) { isDragging = flag; }
 
 	void SetXCoord(int x) { _xCoord = x; }
 
@@ -108,9 +113,19 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 }
 
 LogoBmp logo;
+RECT rectBmp;
+
+void fillRectBmp(RECT& rect) {
+	rect.top = logo.GetYCoord();
+	rect.left = logo.GetXCoord();
+	rect.bottom = logo.GetYCoord() + BMP_HEIGHT;
+	rect.right = logo.GetXCoord() + BMP_WIDTH;
+}
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) {
 	int wheelDir = 0;
+	POINT cursorPos;
+	HPEN hpen = CreatePen(PS_DOT, 1, RGB(0, 0, 0));
 	RECT rt;
 	HBITMAP hBitmap = (HBITMAP)LoadImage(NULL, "nike_logo.bmp", IMAGE_BITMAP, BMP_WIDTH, BMP_HEIGHT, LR_LOADFROMFILE);
 	switch (message) {
@@ -188,6 +203,18 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
 			}
 		}
 		break;
+	case WM_CHAR:
+		if (wParam == 's') {
+			if ((logo.GetYSpeed() == 0) && (logo.GetXSpeed() == 0)) {
+				logo.SetXSpeed(DEF_SPEED * cos(logo.GetLaw()));
+				logo.SetYSpeed(DEF_SPEED * sin(logo.GetLaw()));
+			}
+			else {
+				logo.SetXSpeed(0);
+				logo.SetYSpeed(0);
+			}
+		}
+		break;
 	case WM_KEYUP:
 		if (wParam == VK_UP || wParam == VK_DOWN) {
 			logo.SetYSpeed(0);
@@ -202,14 +229,39 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
 		logo.SetLaw((rand() % 360 - 180) * M_PI / 180.0);
 		logo.SetXSpeed(DEF_SPEED * cos(logo.GetLaw()));
 		logo.SetYSpeed(DEF_SPEED * sin(logo.GetLaw()));
-		SetTimer(hwnd, 1, 20, NULL);
+		SetTimer(hwnd, 1, 15, NULL);
+		break;
+	case WM_LBUTTONDOWN:
+		RECT rectClient;
+		GetClientRect(hwnd, &rectClient);
+		GetCursorPos(&cursorPos);
+		ClipCursor(&rectClient);
+		fillRectBmp(rectBmp);
+		if (PtInRect(&rectBmp, cursorPos)) {
+			//SetCapture(hwnd);
+			logo.SetDrag(TRUE);
+		}
+		break;
+	case WM_MOUSEMOVE:
+		GetCursorPos(&cursorPos);
+		if ((logo.GetDrag()) && (GetKeyState(VK_LBUTTON) < 0)) {
+			InvalidateRgn(hwnd, NULL, TRUE);
+			logo.SetXCoord(cursorPos.x);
+			logo.SetYCoord(cursorPos.y);
+		}
+		break;
+	case WM_LBUTTONUP:
+		//ReleaseCapture();
+		if (logo.GetDrag()) {
+			logo.SetDrag(FALSE);
+		}
 		break;
 	case WM_TIMER:
 	{
-		InvalidateRgn(hwnd, NULL, false);
-		logo.SetXCoord(logo.GetXCoord() + logo.GetXSpeed()); 
-		logo.SetYCoord(logo.GetYCoord() + logo.GetYSpeed()); 
 		GetClientRect(hwnd, &rt);
+		InvalidateRect(hwnd, NULL, FALSE);
+		logo.SetXCoord(logo.GetXCoord() + logo.GetXSpeed()); 
+		logo.SetYCoord(logo.GetYCoord() + logo.GetYSpeed()); 	
 		int width = rt.right;
 		int height = rt.bottom;
 		if (logo.GetXCoord() >= width - BMP_WIDTH) {
@@ -224,7 +276,6 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
 		if (logo.GetYCoord() <= 0) {
 			logo.SetYSpeed(abs(logo.GetYSpeed()));
 		}
-		InvalidateRgn(hwnd, NULL, false);
 	}
 	break;
 	case WM_PAINT:
