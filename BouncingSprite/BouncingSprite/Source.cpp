@@ -9,33 +9,6 @@
 
 LRESULT CALLBACK  WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
-class Window {
-private:
-	HWND _hwnd;
-	MSG _msg;
-	WNDCLASS _wc;
-public:
-
-	void reg_window(HINSTANCE hInstance, LPCWSTR lpzClassName, WNDPROC lpfnWndProc) {
-		_wc.hInstance = hInstance;
-		_wc.lpszClassName = "MainFrame";
-		_wc.lpfnWndProc = WndProc;
-		_wc.style = CS_DBLCLKS;
-		_wc.hIcon = LoadIcon(NULL, IDI_APPLICATION);
-		_wc.hCursor = LoadCursor(NULL, IDC_ARROW);
-		_wc.lpszMenuName = NULL;
-		_wc.cbClsExtra = 0;
-		_wc.cbWndExtra = 0;
-		_wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
-
-		RegisterClass(&_wc);
-		_hwnd = CreateWindow("MainFrame", "LAB 1", WS_OVERLAPPEDWINDOW,
-			200, 300, 400, 300, HWND_DESKTOP, NULL, hInstance, NULL);
-		ShowWindow(_hwnd, SW_SHOW);
-		UpdateWindow(_hwnd);
-	}
-};
-
 class LogoBmp {
 private:
 	double _xSpeed, _ySpeed;
@@ -79,20 +52,38 @@ PAINTSTRUCT ps;
 int wheelDir = 0;
 int xCrd, yCrd;
 
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
+int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 	LPTSTR lpCmdLine, int nCmdShow)
 {
-	MSG msg;
-	Window myWin;
+	HWND _hwnd;
+	MSG _msg;
+	WNDCLASSEX _wc;
 
-	myWin.reg_window(hInstance, L"MyWindowClass", WndProc);
+	_wc.cbSize = sizeof(WNDCLASSEX);
+	_wc.style = CS_DBLCLKS;
+	_wc.lpfnWndProc = WndProc;
+	_wc.cbClsExtra = 0;
+	_wc.cbWndExtra = 0;
+	_wc.hInstance = hInstance;
+	_wc.hIcon = LoadIcon(NULL, IDI_APPLICATION);
+	_wc.hCursor = LoadCursor(NULL, IDC_ARROW);
+	_wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+	_wc.lpszMenuName = NULL;
+	_wc.lpszClassName = "MainFrame";
+	_wc.hIconSm = _wc.hIcon;
 
-	while (GetMessage(&msg, NULL, 0, 0))
+	RegisterClassEx(&_wc);
+	_hwnd = CreateWindow("MainFrame", "LAB 1", WS_OVERLAPPEDWINDOW^WS_THICKFRAME,
+		0, 0, 800, 700, NULL, NULL, hInstance, NULL);
+	ShowWindow(_hwnd, nCmdShow);
+	UpdateWindow(_hwnd);
+
+	while (GetMessage(&_msg, NULL, 0, 0))
 	{
-		TranslateMessage(&msg); 
-		DispatchMessage(&msg); 
+		TranslateMessage(&_msg); 
+		DispatchMessage(&_msg); 
 	}
-	return 0;
+	return (int)_msg.wParam;
 }
 
 void RecountCriticalRgn(RECT& rect) {
@@ -230,6 +221,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
 			}
 			break;
 	case WM_LBUTTONUP:
+		ReleaseCapture();
 		ClipCursor(&rt);
 		if (logo.GetDrag()) {
 			logo.SetDrag(FALSE);
@@ -241,7 +233,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
 		break;
 	case WM_TIMER:
 	{
-		InvalidateRect(hwnd, NULL, FALSE);
+		InvalidateRgn(hwnd, NULL, FALSE);
 		logo.SetXCoord(logo.GetXCoord() + logo.GetXSpeed());
 		logo.SetYCoord(logo.GetYCoord() + logo.GetYSpeed());
 		xCrd = logo.GetXCoord();
