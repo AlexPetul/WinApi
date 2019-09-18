@@ -1,10 +1,11 @@
 ﻿#include <Windows.h>
 #include <cmath>
 #include <cstdlib>
+#include "resource.h"
 #define M_PI 3.14159265358979323846
 #define BMP_WIDTH 220
-#define BMP_HEIGHT 80
-#define DEF_SPEED 6.00
+#define BMP_HEIGHT 90
+#define DEF_SPEED 5.00
 
 LRESULT CALLBACK  WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
@@ -15,11 +16,11 @@ private:
 	WNDCLASS _wc;
 public:
 
-	bool reg_window(HINSTANCE hInstance, LPCWSTR lpzClassName, WNDPROC lpfnWndProc) {
+	void reg_window(HINSTANCE hInstance, LPCWSTR lpzClassName, WNDPROC lpfnWndProc) {
 		_wc.hInstance = hInstance;
 		_wc.lpszClassName = "MainFrame";
 		_wc.lpfnWndProc = WndProc;
-		_wc.style = CS_HREDRAW | CS_VREDRAW;
+		_wc.style = CS_DBLCLKS;
 		_wc.hIcon = LoadIcon(NULL, IDI_APPLICATION);
 		_wc.hCursor = LoadCursor(NULL, IDC_ARROW);
 		_wc.lpszMenuName = NULL;
@@ -27,22 +28,12 @@ public:
 		_wc.cbWndExtra = 0;
 		_wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
 
-		if (!RegisterClass(&_wc))
-		{
-			return 0;
-		}
-	}
-
-	void create_window(HINSTANCE hInstance) {
+		RegisterClass(&_wc);
 		_hwnd = CreateWindow("MainFrame", "LAB 1", WS_OVERLAPPEDWINDOW,
 			200, 300, 400, 300, HWND_DESKTOP, NULL, hInstance, NULL);
-	}
-
-	void show_window() {
 		ShowWindow(_hwnd, SW_SHOW);
 		UpdateWindow(_hwnd);
 	}
-
 };
 
 class LogoBmp {
@@ -76,23 +67,17 @@ public:
 	double GetYSpeed() { return _ySpeed; }
 
 	void SetYSpeed(double ySpeed) { this->_ySpeed = ySpeed; }
-
-	void createRect(HWND hwnd, HBITMAP hBitmap) {
-		PAINTSTRUCT ps;
-		HDC hdc = BeginPaint(hwnd, &ps);
-		HDC hLocalDC;
-		hLocalDC = CreateCompatibleDC(hdc);
-		BITMAP qBitmap;
-		int iReturn = GetObject(reinterpret_cast<HGDIOBJ>(hBitmap), sizeof(BITMAP),
-			reinterpret_cast<LPVOID>(&qBitmap));
-		HBITMAP hOldBmp = (HBITMAP)SelectObject(hLocalDC, hBitmap);
-		BOOL qRetBlit = BitBlt(hdc, _xCoord, _yCoord, qBitmap.bmWidth, qBitmap.bmHeight,
-			hLocalDC, 0, 0, SRCCOPY);
-		SelectObject(hLocalDC, hOldBmp);
-		DeleteDC(hLocalDC);
-		DeleteObject(hBitmap);
-	}
 };
+
+LogoBmp logo;
+RECT rectBmp, rt, rectClient, criticalRgn;
+HBITMAP hBitmap, hOldBmp;
+POINT cursorPos;
+BITMAP qBitmap;
+HDC hdc, hLocalDC;
+PAINTSTRUCT ps;
+int wheelDir = 0;
+int xCrd, yCrd;
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 	LPTSTR lpCmdLine, int nCmdShow)
@@ -101,8 +86,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 	Window myWin;
 
 	myWin.reg_window(hInstance, L"MyWindowClass", WndProc);
-	myWin.create_window(hInstance);
-	myWin.show_window();
 
 	while (GetMessage(&msg, NULL, 0, 0))
 	{
@@ -112,10 +95,14 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 	return 0;
 }
 
-LogoBmp logo;
-RECT rectBmp;
+void RecountCriticalRgn(RECT& rect) {
+	criticalRgn.left = BMP_WIDTH / 2;
+	criticalRgn.top = BMP_HEIGHT / 2;
+	criticalRgn.right = rt.right - BMP_WIDTH / 2;
+	criticalRgn.bottom = rt.bottom - BMP_HEIGHT / 2;
+}
 
-void fillRectBmp(RECT& rect) {
+void fillRectBmp(RECT &rect) {
 	rect.top = logo.GetYCoord();
 	rect.left = logo.GetXCoord();
 	rect.bottom = logo.GetYCoord() + BMP_HEIGHT;
@@ -123,23 +110,10 @@ void fillRectBmp(RECT& rect) {
 }
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) {
-	int wheelDir = 0;
-	POINT cursorPos;
-	HPEN hpen = CreatePen(PS_DOT, 1, RGB(0, 0, 0));
-	RECT rt;
-	HBITMAP hBitmap = (HBITMAP)LoadImage(NULL, "nike_logo.bmp", IMAGE_BITMAP, BMP_WIDTH, BMP_HEIGHT, LR_LOADFROMFILE);
 	switch (message) {
-	case WM_COMMAND:
-		if (LOWORD(wParam) == 666) {
-			if ((logo.GetXSpeed() != 0) || (logo.GetYSpeed() != 0)) {
-				logo.SetXSpeed(0);
-				logo.SetYSpeed(0);
-			}
-			else {
-				logo.SetXSpeed(DEF_SPEED * cos(logo.GetLaw()));
-				logo.SetYSpeed(DEF_SPEED * sin(logo.GetLaw()));
-			}
-		}
+	case WM_CREATE:
+		GetClientRect(hwnd, &rt);
+		hBitmap = (HBITMAP)LoadBitmap(GetModuleHandle(NULL), MAKEINTRESOURCE(IDB_BITMAP1));
 		break;
 	case WM_MOUSEWHEEL:
 		logo.SetXSpeed(0);
@@ -232,55 +206,72 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
 		SetTimer(hwnd, 1, 15, NULL);
 		break;
 	case WM_LBUTTONDOWN:
-		RECT rectClient;
-		GetClientRect(hwnd, &rectClient);
 		GetCursorPos(&cursorPos);
-		ClipCursor(&rectClient);
 		fillRectBmp(rectBmp);
 		if (PtInRect(&rectBmp, cursorPos)) {
-			//SetCapture(hwnd);
+			SetCapture(hwnd);
 			logo.SetDrag(TRUE);
 		}
 		break;
 	case WM_MOUSEMOVE:
-		GetCursorPos(&cursorPos);
 		if ((logo.GetDrag()) && (GetKeyState(VK_LBUTTON) < 0)) {
+			GetCursorPos(&cursorPos);
 			InvalidateRgn(hwnd, NULL, TRUE);
-			logo.SetXCoord(cursorPos.x);
-			logo.SetYCoord(cursorPos.y);
-		}
-		break;
+			logo.SetXCoord(cursorPos.x - BMP_WIDTH / 2);
+			logo.SetYCoord(cursorPos.y - BMP_HEIGHT / 2);
+			GetClientRect(hwnd, &rt);
+
+			xCrd = logo.GetXCoord();
+			yCrd = logo.GetYCoord();
+			
+			if ((xCrd >= rt.right - BMP_WIDTH) || (yCrd > rt.bottom - BMP_HEIGHT) ||
+				(xCrd <= 0) || (yCrd <= 0)) {
+				ClipCursor(&criticalRgn);
+			}
+			break;
 	case WM_LBUTTONUP:
-		//ReleaseCapture();
+		ClipCursor(&rt);
 		if (logo.GetDrag()) {
 			logo.SetDrag(FALSE);
 		}
 		break;
+	case WM_SIZE:
+		GetClientRect(hwnd, &rt);
+		RecountCriticalRgn(criticalRgn);
+		break;
 	case WM_TIMER:
 	{
-		GetClientRect(hwnd, &rt);
 		InvalidateRect(hwnd, NULL, FALSE);
-		logo.SetXCoord(logo.GetXCoord() + logo.GetXSpeed()); 
-		logo.SetYCoord(logo.GetYCoord() + logo.GetYSpeed()); 	
-		int width = rt.right;
-		int height = rt.bottom;
-		if (logo.GetXCoord() >= width - BMP_WIDTH) {
+		logo.SetXCoord(logo.GetXCoord() + logo.GetXSpeed());
+		logo.SetYCoord(logo.GetYCoord() + logo.GetYSpeed());
+		xCrd = logo.GetXCoord();
+		yCrd = logo.GetYCoord();
+		if (xCrd >= rt.right - BMP_WIDTH) {
 			logo.SetXSpeed(-abs(logo.GetXSpeed()));
 		}
-		if (logo.GetYCoord() > height - BMP_HEIGHT) {
+		else if (yCrd > rt.bottom - BMP_HEIGHT) {
 			logo.SetYSpeed(-abs(logo.GetYSpeed()));
 		}
-		if (logo.GetXCoord() <= 0) {
+		else if (xCrd <= 0) {
 			logo.SetXSpeed(abs(logo.GetXSpeed()));
 		}
-		if (logo.GetYCoord() <= 0) {
+		else if (yCrd <= 0) {
 			logo.SetYSpeed(abs(logo.GetYSpeed()));
 		}
 	}
 	break;
 	case WM_PAINT:
 	{
-		logo.createRect(hwnd, hBitmap);
+		hdc = BeginPaint(hwnd, &ps);
+		hLocalDC = CreateCompatibleDC(hdc);
+		GetObject(reinterpret_cast<HGDIOBJ>(hBitmap), sizeof(BITMAP), reinterpret_cast<LPVOID>(&qBitmap));
+		hOldBmp = (HBITMAP)SelectObject(hLocalDC, hBitmap);
+		BitBlt(hdc, logo.GetXCoord(), logo.GetYCoord(), qBitmap.bmWidth, qBitmap.bmHeight,
+			hLocalDC, 0, 0, SRCCOPY);
+		SelectObject(hLocalDC, hOldBmp);
+		DeleteDC(hLocalDC);
+		DeleteObject(hOldBmp);
+		EndPaint(hwnd, &ps);
 	}
 	break;
 	case WM_DESTROY:
@@ -290,5 +281,6 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
 
 	default:
 		return DefWindowProc(hwnd, message, wParam, lParam);
+		}
 	}
 }
