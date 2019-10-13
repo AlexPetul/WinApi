@@ -9,7 +9,21 @@ struct Task {
 };
 
 CHAR buff[1198];
-queue<Task> concurrentQueue;
+HANDLE mutex;
+
+class ConcurrentQueue {
+private:
+	queue<Task> safeQueue;
+public:
+	queue<Task> GetQueue() { return safeQueue; }
+
+	void SinglePush(Task task) { safeQueue.push(task); }
+
+	Task SingleFront() { return safeQueue.front(); }
+
+	void SinglePop() { safeQueue.pop(); }
+	
+}threadSafeQueue;
 
 int main()
 {
@@ -26,6 +40,55 @@ int main()
 		resArr = SplitText(plainText, resArr, "\r\n");
 		FillQueue(resArr, arrSize + 1);
 		delete[] resArr;
+		CreateAndStartThreads();
+		for (int index = 0; index < MAX_THREAD_COUNT; index++) {
+			Task task = threadSafeQueue.SingleFront();
+			threadSafeQueue.SinglePop();
+			for (int ind = 0; ind < task.countStrings; ind++) {
+				cout << task.stringsToSort[ind] << endl;
+			}
+			cout << endl;
+		}
+	}
+	return 0;
+}
+
+VOID CreateAndStartThreads()
+{
+	DWORD threadIds[MAX_THREAD_COUNT];
+	HANDLE hThreadArray[MAX_THREAD_COUNT];
+	mutex = CreateMutex(NULL, FALSE, NULL);
+	for (int index = 0; index < MAX_THREAD_COUNT; index++) {
+		hThreadArray[index] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)ThreadFunction, 
+			(LPVOID)index, 0, &threadIds[index]);
+	}
+
+	WaitForMultipleObjects(MAX_THREAD_COUNT, hThreadArray, TRUE, INFINITE);
+	for (int index = 0; index < MAX_THREAD_COUNT; index++) {
+		CloseHandle(hThreadArray[index]);
+	}
+}
+
+DWORD WINAPI ThreadFunction(LPVOID lpParam)
+{
+	DWORD dwWaitResult = WaitForSingleObject(mutex, INFINITE);
+	switch (dwWaitResult) {
+	case WAIT_OBJECT_0:
+		Task currentTask = threadSafeQueue.SingleFront();
+		string* stringsToSort = currentTask.stringsToSort;
+		int maxLen = currentTask.countStrings;
+		for (int index = 0; index < maxLen - 1; index++) {
+			for (int ind = 0; ind < maxLen - index - 1; ind++) {
+				if (tolower(stringsToSort[ind][0]) > tolower(stringsToSort[ind + 1][0])) {
+					string temp = stringsToSort[ind];
+					stringsToSort[ind] = stringsToSort[ind + 1];
+					stringsToSort[ind + 1] = temp;
+				}
+			}
+		}
+		threadSafeQueue.SinglePop();
+		threadSafeQueue.SinglePush(Task{ stringsToSort, 3 });
+		ReleaseMutex(mutex);
 	}
 	return 0;
 }
@@ -42,7 +105,7 @@ void FillQueue(string* arr, int size)
 					newArr[ind] = arr[currIndexArr];
 					currIndexArr++;
 				}
-				concurrentQueue.push(Task{ newArr, checkSize });
+				threadSafeQueue.SinglePush(Task{ newArr, checkSize });
 			}
 			else {
 				int endSize = checkSize + size - 1 - (checkSize * DEFAULT_TASKS_COUNT);
@@ -51,17 +114,9 @@ void FillQueue(string* arr, int size)
 					newArr[ind] = arr[currIndexArr];
 					currIndexArr++;
 				}
-				concurrentQueue.push(Task{ newArr, endSize });
+				threadSafeQueue.SinglePush(Task{ newArr, endSize });
 			}
 		}
-	}
-	for (int index = 0; index < DEFAULT_TASKS_COUNT; index++) {
-		Task currTask = concurrentQueue.front();
-		for (int i = 0; i < currTask.countStrings; i++) {
-			cout << currTask.stringsToSort[i] << endl;
-		}
-		cout << endl;
-		concurrentQueue.pop();
 	}
 }
 
