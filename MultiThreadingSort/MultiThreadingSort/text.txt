@@ -1,0 +1,17 @@
+It is important to have a clear idea what you mean by performance.
+There is not just one metric of it.
+Improved speed might be the most obvious aim for a program, but sometimes other
+performance improvements might be sought, such as lower memory consumption or fewer
+demands on the database or network.
+Improvements in one area will often bring about improved performance in another,
+but not always; sometimes one can even be at the expense of another. For example,
+an improvement in a programs speed might cause it to use more memory. Even worse,
+it can be self-defeating - if the speed improvement is so memory-hungry that the system
+starts to run out of memory, you will have done more harm than good.
+There are other trade-offs to bear in mind. Your own time is a valuable resource,
+more precious than CPU time. Some improvements might be too difficult to be worth
+implementing, or might affect the portability or maintainability of the code. Not
+all performance improvements are worth the effort.
+So, you need to know what performance improvements you are aiming for,
+and you also need to know that you have a good reason for aiming in that
+direction - and for that you need.
