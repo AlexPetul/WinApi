@@ -2,14 +2,10 @@
 
 using namespace std;
 
-
 struct Task {
 	string* stringsToSort;
 	int countStrings;
 };
-
-CHAR buff[1198];
-HANDLE mutex;
 
 class ConcurrentQueue {
 private:
@@ -17,40 +13,98 @@ private:
 public:
 	queue<Task> GetQueue() { return safeQueue; }
 
-	void SinglePush(Task task) { safeQueue.push(task); }
+	void Enqueue(Task task) { safeQueue.push(task); }
 
-	Task SingleFront() { return safeQueue.front(); }
+	Task Dequeue() { return safeQueue.front(); }
 
 	void SinglePop() { safeQueue.pop(); }
 	
 }threadSafeQueue;
 
+HANDLE mutex;
+string* resultArr;
+DWORD fileSize;
+
 int main()
 {
-	cout << "File content before:" << endl;
-	if (ReadFile() == 1)
+	char* buff = ReadFileContent();
+	if (buff == NULL)
 	{
 		return 1;
 	}
 	else
 	{
-		string plainText = ConvertArrToStr(buff, 1198);
+		cout << buff << endl << endl;
+		string plainText = ConvertArrToStr(buff, fileSize);
 		int arrSize = count(plainText.begin(), plainText.end(), '\n');
 		string* resArr = new string[arrSize + 1];
 		resArr = SplitText(plainText, resArr, "\r\n");
 		FillQueue(resArr, arrSize + 1);
 		delete[] resArr;
 		CreateAndStartThreads();
+		resultArr = new string[arrSize + 1];
+		int counter = 0;
 		for (int index = 0; index < MAX_THREAD_COUNT; index++) {
-			Task task = threadSafeQueue.SingleFront();
+			Task task = threadSafeQueue.Dequeue();
+			string* pointer = threadSafeQueue.Dequeue().stringsToSort;
 			threadSafeQueue.SinglePop();
 			for (int ind = 0; ind < task.countStrings; ind++) {
-				cout << task.stringsToSort[ind] << endl;
+				resultArr[counter] = task.stringsToSort[ind];
+				counter++;
 			}
-			cout << endl;
+			delete[] pointer;
 		}
+		MergeSortA(0, arrSize);
+		for (int index = 0; index < arrSize + 1; index++) {
+			cout << resultArr[index] << endl;
+		}		
+		delete[] resultArr;
 	}
 	return 0;
+}
+
+void MergeSortA(int low, int high)
+{
+	int mid = 0;
+	if (low < high) {
+		mid = ((low + high) / 2);
+		MergeSortA(low, mid);
+		MergeSortA(mid + 1, high);
+		MergeA(low, mid, high);
+	}
+}
+void MergeA(int low, int mid, int high)
+{
+	int i = low, j = mid + 1, k = low;
+	string *Temp = new string[high + 1];
+
+	while (i <= mid && j <= high) {
+		if (resultArr[i] < resultArr[j]) {
+			Temp[k].assign(resultArr[i]);
+			i++;
+		}
+		else {
+			Temp[k].assign(resultArr[j]);
+			j++;
+		}
+		k++;
+	}
+	if (i > mid) {
+		for (int h = j; h <= high; h++) {
+			Temp[k].assign(resultArr[h]);
+			k++;
+		}
+	}
+	else {
+		for (int h = i; h <= mid; h++) {
+			Temp[k].assign(resultArr[h]);
+			k++;
+		}
+	}
+	for (int i = low; i <= high; i++) {
+		resultArr[i].assign(Temp[i]);
+	}
+	delete[] Temp;
 }
 
 VOID CreateAndStartThreads()
@@ -59,14 +113,14 @@ VOID CreateAndStartThreads()
 	HANDLE hThreadArray[MAX_THREAD_COUNT];
 	mutex = CreateMutex(NULL, FALSE, NULL);
 	for (int index = 0; index < MAX_THREAD_COUNT; index++) {
-		hThreadArray[index] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)ThreadFunction, 
+		hThreadArray[index] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)ThreadFunction,
 			(LPVOID)index, 0, &threadIds[index]);
 	}
-
 	WaitForMultipleObjects(MAX_THREAD_COUNT, hThreadArray, TRUE, INFINITE);
 	for (int index = 0; index < MAX_THREAD_COUNT; index++) {
 		CloseHandle(hThreadArray[index]);
 	}
+	CloseHandle(mutex);
 }
 
 DWORD WINAPI ThreadFunction(LPVOID lpParam)
@@ -74,7 +128,7 @@ DWORD WINAPI ThreadFunction(LPVOID lpParam)
 	DWORD dwWaitResult = WaitForSingleObject(mutex, INFINITE);
 	switch (dwWaitResult) {
 	case WAIT_OBJECT_0:
-		Task currentTask = threadSafeQueue.SingleFront();
+		Task currentTask = threadSafeQueue.Dequeue();
 		string* stringsToSort = currentTask.stringsToSort;
 		int maxLen = currentTask.countStrings;
 		for (int index = 0; index < maxLen - 1; index++) {
@@ -87,7 +141,7 @@ DWORD WINAPI ThreadFunction(LPVOID lpParam)
 			}
 		}
 		threadSafeQueue.SinglePop();
-		threadSafeQueue.SinglePush(Task{ stringsToSort, 3 });
+		threadSafeQueue.Enqueue(Task{ stringsToSort, maxLen });
 		ReleaseMutex(mutex);
 	}
 	return 0;
@@ -96,6 +150,7 @@ DWORD WINAPI ThreadFunction(LPVOID lpParam)
 void FillQueue(string* arr, int size)
 {
 	int checkSize = size / DEFAULT_TASKS_COUNT;
+	//если поравну разбить не получается
 	if (checkSize * DEFAULT_TASKS_COUNT != size) {
 		int currIndexArr = 0;
 		for (int index = 0; index < DEFAULT_TASKS_COUNT; index++) {
@@ -105,7 +160,7 @@ void FillQueue(string* arr, int size)
 					newArr[ind] = arr[currIndexArr];
 					currIndexArr++;
 				}
-				threadSafeQueue.SinglePush(Task{ newArr, checkSize });
+				threadSafeQueue.Enqueue(Task{ newArr, checkSize });
 			}
 			else {
 				int endSize = checkSize + size - 1 - (checkSize * DEFAULT_TASKS_COUNT);
@@ -114,8 +169,18 @@ void FillQueue(string* arr, int size)
 					newArr[ind] = arr[currIndexArr];
 					currIndexArr++;
 				}
-				threadSafeQueue.SinglePush(Task{ newArr, endSize });
+				threadSafeQueue.Enqueue(Task{ newArr, endSize });
 			}
+		}
+	}
+	else {
+		int currentIndex = 0;
+		for (int index = 0; index < DEFAULT_TASKS_COUNT; index++) {
+			string* newArr = new string[checkSize + 1];
+			for (int ind = 0; ind < checkSize; ind++) {
+				newArr[ind] = arr[currentIndex];
+			}
+			threadSafeQueue.Enqueue(Task{ newArr, checkSize });
 		}
 	}
 }
@@ -143,22 +208,25 @@ string ConvertArrToStr(CHAR* buff, int size)
 	return resultStr;
 }
 
-int ReadFile()
+char* ReadFileContent()
 {
-	HANDLE hFile = CreateFileA("text.txt", GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-	DWORD fileSize = GetFileSize(hFile, NULL);
+	HANDLE hFile = CreateFile(L"text.txt", GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	fileSize = GetFileSize(hFile, NULL);
+	char* buff = new char[fileSize + 1];
+	DWORD bytesRead;
 	ZeroMemory(buff, sizeof(buff));
 	if (hFile == INVALID_HANDLE_VALUE)
 	{
 		cout << GetLastError() << endl;
-		return 1;
+		return NULL;
 	}
-	BOOL readResult = ReadFile(hFile, (LPVOID)buff, sizeof(buff), NULL, NULL);
+	BOOL readResult = ReadFile(hFile, (LPVOID)buff, fileSize, &bytesRead, (LPOVERLAPPED)NULL);
+	buff[fileSize] = '\0';
 	if (!readResult)
 	{
 		cout << GetLastError() << endl;
-		return 1;
+		return NULL;
 	}
 	CloseHandle(hFile);
-	return 0;
+	return buff;
 }
