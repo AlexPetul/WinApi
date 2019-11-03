@@ -67,9 +67,9 @@ oacr invalidate root:x86chk /autocleanqueue
 1> /FIC:\WinDDK\7600.16385.1\inc\api\warning.h
 1> .\mydriver.c 
 1>mydriver.c
-1>c:\driverenv\mydriver.c(14) : warning C4273: 'PsLookupProcessByProcessId' : inconsistent dll linkage
+1>c:\driverenv\mydriver.c(11) : warning C4273: 'PsLookupProcessByProcessId' : inconsistent dll linkage
 1>warnings in directory c:\driverenv
-1>c:\driverenv\mydriver.c(14) : warning C4273: 'PsLookupProcessByProcessId' : inconsistent dll linkage
+1>c:\driverenv\mydriver.c(11) : warning C4273: 'PsLookupProcessByProcessId' : inconsistent dll linkage
 1> c:\winddk\7600.16385.1\inc\ddk\ntifs.h(10575) : see previous definition of 'PsLookupProcessByProcessId'
 1> C:\WinDDK\7600.16385.1\Bin\x86\oacr\oacrlink /out:c:\driverenv\objchk_wxp_x86\i386\mydriver.sys /machine:ix86 @c:\driverenv\objchk_wxp_x86\i386\lnk.rsp
 1>Microsoft (R) Incremental Linker Version 9.00.30729.207

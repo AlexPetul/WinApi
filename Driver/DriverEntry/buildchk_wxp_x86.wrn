@@ -1,2 +1,2 @@
 1>warnings in directory c:\driverenv
-1>c:\driverenv\mydriver.c(14) : warning C4273: 'PsLookupProcessByProcessId' : inconsistent dll linkage
+1>c:\driverenv\mydriver.c(11) : warning C4273: 'PsLookupProcessByProcessId' : inconsistent dll linkage
