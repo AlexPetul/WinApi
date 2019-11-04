@@ -1,0 +1,6 @@
+##################################################
+TARGETNAME=regdriver
+TARGETTYPE=DRIVER
+
+SOURCES=regdriver.c source.c
+##################################################
