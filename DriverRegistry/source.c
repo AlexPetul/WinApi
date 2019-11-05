@@ -63,6 +63,7 @@ BOOLEAN IsLogToFileNeed(REG_NOTIFY_CLASS NotifyClass)
 	case RegNtPreDeleteValueKey:
 	case RegNtPreDeleteKey:
 	case RegNtPreRenameKey:
+	case RegNtPreCreateKey:
 	case RegNtPreCreateKeyEx:
 	case RegNtPreSaveKey:
 		return TRUE;

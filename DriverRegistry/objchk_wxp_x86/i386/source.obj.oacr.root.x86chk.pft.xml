@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<DEFECTS>
+<OACRDEFECTCOUNT>2</OACRDEFECTCOUNT>
+<OACRERRORCOUNT>0</OACRERRORCOUNT>
+<DEFECT _seq="1"><SFA><LINE>4</LINE><COLUMN>7</COLUMN><FILENAME>source.c</FILENAME><FILEPATH>c:\driverregistry\</FILEPATH></SFA><DEFECTCODE>28170</DEFECTCODE><DESCRIPTION>The function 'GetNotifyClassString' has been declared to be in a paged segment, but neither PAGED_CODE nor PAGED_CODE_LOCKED was found.</DESCRIPTION><FUNCTION>GetNotifyClassString</FUNCTION><FUNCLINE>4</FUNCLINE><PATH/></DEFECT>
+<DEFECT _seq="2"><SFA><LINE>58</LINE><COLUMN>8</COLUMN><FILENAME>source.c</FILENAME><FILEPATH>c:\driverregistry\</FILEPATH></SFA><DEFECTCODE>28170</DEFECTCODE><DESCRIPTION>The function 'IsLogToFileNeed' has been declared to be in a paged segment, but neither PAGED_CODE nor PAGED_CODE_LOCKED was found.</DESCRIPTION><FUNCTION>IsLogToFileNeed</FUNCTION><FUNCLINE>58</FUNCLINE><PATH/></DEFECT>
+</DEFECTS>

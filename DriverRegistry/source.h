@@ -1,9 +1,11 @@
 #include <ntddk.h>
 
-#define LOG_FILE_PATH L"\\??\\C:\\regdriver.log"
 #define DRIVER_NAME "regdriver"
+#define DEVICE_NAME L"\\Device\\regdriver"
+#define DEFAULT_ALTITUDE L"100000"
 #define TRACKING_PROCESS "regedit.exe"
-#define LOG_FILE_DELIMITER ":"
+#define LOG_FILE_DELIMITER " -> "
+#define FILE_NEW_LINE "\r\n"
 
 typedef struct _DriverVariables
 {
@@ -17,13 +19,17 @@ typedef struct _DriverVariables
 } DriverVariables, *PDriverVariables;
 
 NTSTATUS DriverEntry(IN PDRIVER_OBJECT DriverObject, IN PUNICODE_STRING RegistryPath);
-NTSTATUS RegistryOperationsCallback(PVOID CallbackContext, PVOID Argument1, PVOID Argument2);
 VOID UnloadRoutine(IN PDRIVER_OBJECT DriverObject);
-void dvInitialize(PDEVICE_OBJECT pDeviceObject);
+NTSTATUS RegistryOperationsCallback(PVOID CallbackContext, PVOID Argument1, PVOID Argument2);
 PDriverVariables GetDriverVariables(PDEVICE_OBJECT pDeviceObject);
-typedef PCHAR TPsGetProcessImageFileName(PEPROCESS Process);
 NTSTATUS PsLookupProcessByProcessId(HANDLE ProcessId, PEPROCESS *Process);
 LPCSTR GetNotifyClassString(REG_NOTIFY_CLASS NotifyClass);
 BOOLEAN IsLogToFileNeed(REG_NOTIFY_CLASS NotifyClass);
-NTSTATUS PsLookupProcessByProcessId(HANDLE ProcessId, PEPROCESS *Process);
 char* PsGetProcessImageFileName(IN PEPROCESS Process);
+
+#pragma alloc_text(INIT, DriverEntry)
+#pragma alloc_text(PAGE, UnloadRoutine)
+#pragma alloc_text(PAGE, RegistryOperationsCallback)
+#pragma alloc_text(PAGE, GetDriverVariables)
+#pragma alloc_text(PAGE, GetNotifyClassString)
+#pragma alloc_text(PAGE, IsLogToFileNeed)

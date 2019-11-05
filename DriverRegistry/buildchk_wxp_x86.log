@@ -1,5 +1,3 @@
-BUILD: null byte at offset 0x00010000
-BUILD: corrupt database (Include error)
 BUILD: Computing Include file dependencies:
 BUILD: Examining c:\driverregistry directory for files to compile.
 oacr invalidate root:x86chk /autocleanqueue
